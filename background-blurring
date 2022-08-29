@@ -1,0 +1,61 @@
+import cv2.cv2 as cv2
+import numpy as np
+from imread_from_url import imread_from_url
+
+# Read the original image
+original_image = imread_from_url("https://i.ibb.co/JkXbTtv/shinta.jpg")
+#original_image = imread_from_url("https://cdns.klimg.com/newshub.id/news/2016/09/06/94624/menguak-makna-simbol-arca-dwarapala-sosok-penjaga-candi-singhasari-160906o.jpg")
+#cv2.imshow("Input", original_image)
+#original_image = cv2.imread("shinta.JPG")
+cv2.waitKey(0)
+
+# Define boundary rectangle containing the foreground object
+height, width, _ = original_image.shape
+left_margin_proportion = 0.3
+right_margin_proportion = 0.5
+up_margin_proportion = 0.05
+down_margin_proportion = 0.1
+
+boundary_rectangle = (
+    int(width * left_margin_proportion),
+    int(height * up_margin_proportion),
+    int(width * (1 - right_margin_proportion)),
+    int(height * (1 - down_margin_proportion)),
+)
+
+# Set the seed for reproducibility purposes
+cv2.setRNGSeed(0)
+
+# Initialize GrabCut mask image, that will store the segmentation results
+mask = np.zeros((height, width), np.uint8)
+
+# Arrays used by the algorithm internally
+background_model = np.zeros((1, 65), np.float64)
+foreground_model = np.zeros((1, 65), np.float64)
+
+number_of_iterations = 2
+
+cv2.grabCut(
+    img=original_image,
+    mask=mask,
+    rect=boundary_rectangle,
+    bgdModel=background_model,
+    fgdModel=foreground_model,
+    iterCount=number_of_iterations,
+    mode=cv2.GC_INIT_WITH_RECT,
+)
+
+grabcut_obj = np.where((mask == cv2.GC_PR_BGD) | (mask == cv2.GC_BGD), 1, 0).astype(
+    "uint8"
+)
+grabcut_bg = np.where((mask == cv2.GC_PR_BGD) | (mask == cv2.GC_BGD), 0, 1).astype(
+    "uint8"
+)
+
+grabcut_blur = cv2.blur(original_image,(100,100))
+blur_image = grabcut_blur.copy() * grabcut_obj[:, :, np.newaxis]
+
+obj_image = original_image.copy() * grabcut_bg[:, :, np.newaxis]
+fix_image = obj_image.copy() + blur_image.copy()
+cv2.imwrite("bismillah.jpg", fix_image)
+cv2.waitKey(0)
